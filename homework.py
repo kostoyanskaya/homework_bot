@@ -13,7 +13,7 @@ PRACTICUM_TOKEN = os.getenv('FIRST_TOKEN')
 TELEGRAM_TOKEN = os.getenv('SECOND_TOKEN')
 TELEGRAM_CHAT_ID = 6615343369
 
-RETRY_PERIOD = 100
+RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -66,36 +66,45 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Проверяет ответ API на соответствие документации."""
     expected_keys = ['homeworks', 'current_date']
-    if set(expected_keys) != set(response.keys()):
+    if not isinstance(response, dict):
+        raise TypeError('Ответ API не является словарем')
+
+    if 'homeworks' not in response or 'current_date' not in response:
         logger.error('Некорректный ответ от API, недостаток ключей')
-        return False
+        raise KeyError('Некорректный ответ от API')
+
     if not isinstance(response['homeworks'], list):
         logger.error('Ключ "homeworks" не является списком')
-        return False
+        raise TypeError('Ключ "homeworks" должен быть списком')
 
     for homework in response['homeworks']:
         expected_keys = [
             'id', 'status', 'homework_name',
             'reviewer_comment', 'date_updated', 'lesson_name'
         ]
-        if set(expected_keys) != set(homework.keys()):
+        if not isinstance(homework, dict) or set(expected_keys) != set(homework.keys()):
             logger.error('Некорректная структура данных домашнего задания')
-            return False
-        if homework['status'] not in HOMEWORK_VERDICTS.keys():
-            logger.error('Неожиданный статус домашней работы')
-            return False
+            raise ValueError('Некорректная структура данных домашнего задания')
 
-    return True
+        if 'status' not in homework or homework['status'] not in HOMEWORK_VERDICTS:
+            logger.error('Недокументированный статус домашней работы')
+            raise ValueError('Недокументированный статус домашней работы')
+
 
 
 def parse_status(homework):
     """Извлекает из информации о конкретной домашней работе."""
-    verdict = HOMEWORK_VERDICTS.get(homework['status'], None)
-    if verdict:
-        homework_name = homework['homework_name']
-        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
-    return None
+    if 'homework_name' not in homework:
+        raise KeyError('Нет ключа homework_name в ответе API')
 
+    homework_name = homework['homework_name']
+    status = homework['status']
+
+    if status not in HOMEWORK_VERDICTS:
+        raise ValueError('Недокументированный статус домашней работы')
+
+    verdict = HOMEWORK_VERDICTS[status]
+    return f'Изменился статус проверки "{homework_name}": {verdict}'
 
 def main():
     """Основная логика работы бота."""
@@ -103,31 +112,22 @@ def main():
         return
 
     bot = TeleBot(TELEGRAM_TOKEN)
-    timestamp = int(0)
+    timestamp = int(time.time())
 
-    error_sent = False
 
     while True:
-        try:
-            response = get_api_answer(timestamp)
 
-            if check_response(response):
-                for homework in response['homeworks']:
-                    message = parse_status(homework)
-                    if message:
+        response = get_api_answer(timestamp)
+
+        if response:
+            try:
+                homeworks = check_response(response)['homeworks']
+                if homeworks:
+                    for homework in homeworks:
+                        message = parse_status(homework)
                         send_message(bot, message)
-
-                if not response['homeworks']:
-                    logger.debug('Нет новых статусов для отправки.')
-
-            timestamp = response.get('current_date', timestamp)
-
-        except Exception as error:
-            if not error_sent:
-                message = f'Сбой в работе программы: {error}'
-                send_message(bot, message)
-                error_sent = True  # Сообщение об ошибке было отправлено
-            logger.error(f'Ошибка при выполнении программы: {error}')
+            except Exception as error:
+                logger.error(f'Ошибка в основной программе: {error}')
 
         time.sleep(RETRY_PERIOD)
 
