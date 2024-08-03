@@ -85,21 +85,6 @@ def check_response(response):
         logger.error('Ключ homeworks не является списком')
         raise TypeError('Ключ homeworks должен быть списком')
 
-    for homework in homeworks:
-        expected_keys = [
-            'id', 'status', 'homework_name',
-            'reviewer_comment', 'date_updated', 'lesson_name'
-        ]
-        if not isinstance(homework, dict) or set(
-            expected_keys
-        ) != set(homework.keys()):
-            logger.error('Некорректная структура данных')
-            raise ValueError('Некорректная структура данных')
-
-        if homework['status'] not in HOMEWORK_VERDICTS:
-            logger.error('Ошибка статуса работы')
-            raise ValueError('Ошибка статуса работы')
-
     return response
 
 
