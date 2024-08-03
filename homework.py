@@ -66,7 +66,6 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ API на соответствие документации."""
     if not isinstance(response, dict):
         logger.error('Ответ API не является словарем')
         raise TypeError('Ответ API не является словарем')
@@ -79,10 +78,7 @@ def check_response(response):
         logger.error('Ключ current_date отсутствует в ответе API')
         raise KeyError('Ключ current_date отсутствует в ответе API')
 
-    homeworks = response.get('homeworks')
-    if homeworks is None:
-        logger.error('Ключ homeworks равен None')
-        return {'homeworks': []}
+    homeworks = response.get('homeworks', [])
 
     if not isinstance(homeworks, list):
         logger.error('Ключ homeworks не является списком')
