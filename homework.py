@@ -17,7 +17,6 @@ RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
@@ -66,45 +65,61 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Проверяет ответ API на соответствие документации."""
     expected_keys = ['homeworks', 'current_date']
+    homeworks = response.get('homeworks')
+    if homeworks is None:
+        logger.error('Ключ homeworks отсутствует или равен None')
+        return {'homeworks': []}
     if not isinstance(response, dict):
         raise TypeError('Ответ API не является словарем')
 
     if 'homeworks' not in response or 'current_date' not in response:
-        logger.error('Некорректный ответ от API, недостаток ключей')
+        logger.error('Некорректный ответ от API')
         raise KeyError('Некорректный ответ от API')
 
+    if 'homeworks' not in response or response['homeworks'] is None:
+        logger.error('Ключ homeworks отсутствует или равен None')
+        raise TypeError('Ключ homeworks быть списком')
+
     if not isinstance(response['homeworks'], list):
-        logger.error('Ключ "homeworks" не является списком')
-        raise TypeError('Ключ "homeworks" должен быть списком')
+        logger.error('Ключ homeworks не является списком')
+        raise TypeError('Ключ homeworks должен быть списком')
 
     for homework in response['homeworks']:
         expected_keys = [
             'id', 'status', 'homework_name',
             'reviewer_comment', 'date_updated', 'lesson_name'
         ]
-        if not isinstance(homework, dict) or set(expected_keys) != set(homework.keys()):
-            logger.error('Некорректная структура данных домашнего задания')
-            raise ValueError('Некорректная структура данных домашнего задания')
+        if not isinstance(homework, dict) or set(expected_keys) != set(
+            homework.keys()
+        ):
+            logger.error('Некорректная структура данных')
+            raise ValueError('Некорректная структура данных')
 
-        if 'status' not in homework or homework['status'] not in HOMEWORK_VERDICTS:
-            logger.error('Недокументированный статус домашней работы')
-            raise ValueError('Недокументированный статус домашней работы')
+        if 'status' not in homework or homework[
+            'status'
+        ] not in HOMEWORK_VERDICTS:
+            logger.error('Ошибка статуса работы')
+            raise ValueError('Ошибка статуса работы')
 
+    return response
 
 
 def parse_status(homework):
     """Извлекает из информации о конкретной домашней работе."""
     if 'homework_name' not in homework:
-        raise KeyError('Нет ключа homework_name в ответе API')
+        raise KeyError('Нет ключа homework_name в API')
 
     homework_name = homework['homework_name']
     status = homework['status']
 
     if status not in HOMEWORK_VERDICTS:
-        raise ValueError('Недокументированный статус домашней работы')
+        raise ValueError('Неправильный статус домашней работы')
+    verdict = HOMEWORK_VERDICTS.get(homework['status'], None)
+    if verdict:
+        homework_name = homework['homework_name']
+        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    return None
 
-    verdict = HOMEWORK_VERDICTS[status]
-    return f'Изменился статус проверки "{homework_name}": {verdict}'
 
 def main():
     """Основная логика работы бота."""
@@ -114,20 +129,29 @@ def main():
     bot = TeleBot(TELEGRAM_TOKEN)
     timestamp = int(time.time())
 
+    error_sent = False
 
     while True:
+        try:
+            response = get_api_answer(timestamp)
 
-        response = get_api_answer(timestamp)
-
-        if response:
-            try:
-                homeworks = check_response(response)['homeworks']
-                if homeworks:
-                    for homework in homeworks:
-                        message = parse_status(homework)
+            if check_response(response):
+                for homework in response['homeworks']:
+                    message = parse_status(homework)
+                    if message:
                         send_message(bot, message)
-            except Exception as error:
-                logger.error(f'Ошибка в основной программе: {error}')
+
+                if not response['homeworks']:
+                    logger.debug('Нет новых статусов для отправки.')
+
+            timestamp = response.get('current_date', timestamp)
+
+        except Exception as error:
+            if not error_sent:
+                message = f'Сбой в работе программы: {error}'
+                send_message(bot, message)
+                error_sent = True
+            logger.error(f'Ошибка при выполнении программы: {error}')
 
         time.sleep(RETRY_PERIOD)
 
