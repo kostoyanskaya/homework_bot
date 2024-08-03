@@ -60,7 +60,7 @@ def get_api_answer(timestamp):
     except Exception as error:
         logger.error(f"Ошибка при запросе к API: {error}")
     else:
-        if homework_statuses.status_code != HTTPStatus.OK: 
+        if homework_statuses.status_code != HTTPStatus.OK:
             raise requests.HTTPError('Статус страницы не равен 200')
         return homework_statuses.json()
 
