@@ -64,40 +64,39 @@ def get_api_answer(timestamp):
 
 def check_response(response):
     """Проверяет ответ API на соответствие документации."""
-    expected_keys = ['homeworks', 'current_date']
-    homeworks = response.get('homeworks')
-    if homeworks is None:
-        logger.error('Ключ homeworks отсутствует или равен None')
-        return {'homeworks': []}
     if not isinstance(response, dict):
+        logger.error('Ответ API не является словарем')
         raise TypeError('Ответ API не является словарем')
 
-    if 'homeworks' not in response or 'current_date' not in response:
-        logger.error('Некорректный ответ от API')
-        raise KeyError('Некорректный ответ от API')
+    if 'homeworks' not in response:
+        logger.error('Ключ homeworks отсутствует в ответе API')
+        raise KeyError('Ключ homeworks отсутствует в ответе API')
 
-    if 'homeworks' not in response or response['homeworks'] is None:
-        logger.error('Ключ homeworks отсутствует или равен None')
-        raise TypeError('Ключ homeworks быть списком')
+    if 'current_date' not in response:
+        logger.error('Ключ current_date отсутствует в ответе API')
+        raise KeyError('Ключ current_date отсутствует в ответе API')
 
-    if not isinstance(response['homeworks'], list):
+    homeworks = response.get('homeworks')
+    if homeworks is None:
+        logger.error('Ключ homeworks равен None')
+        return {'homeworks': []}
+
+    if not isinstance(homeworks, list):
         logger.error('Ключ homeworks не является списком')
         raise TypeError('Ключ homeworks должен быть списком')
 
-    for homework in response['homeworks']:
+    for homework in homeworks:
         expected_keys = [
             'id', 'status', 'homework_name',
             'reviewer_comment', 'date_updated', 'lesson_name'
         ]
-        if not isinstance(homework, dict) or set(expected_keys) != set(
-            homework.keys()
-        ):
+        if not isinstance(homework, dict) or set(
+            expected_keys
+        ) != set(homework.keys()):
             logger.error('Некорректная структура данных')
             raise ValueError('Некорректная структура данных')
 
-        if 'status' not in homework or homework[
-            'status'
-        ] not in HOMEWORK_VERDICTS:
+        if homework['status'] not in HOMEWORK_VERDICTS:
             logger.error('Ошибка статуса работы')
             raise ValueError('Ошибка статуса работы')
 
@@ -114,9 +113,9 @@ def parse_status(homework):
 
     if status not in HOMEWORK_VERDICTS:
         raise ValueError('Неправильный статус домашней работы')
-    verdict = HOMEWORK_VERDICTS.get(homework['status'], None)
+
+    verdict = HOMEWORK_VERDICTS.get(status, None)
     if verdict:
-        homework_name = homework['homework_name']
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
     return None
 
