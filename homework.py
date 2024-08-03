@@ -1,10 +1,12 @@
 import logging
 import os
 import time
+from http import HTTPStatus
 
-import requests
 from dotenv import load_dotenv
 from telebot import TeleBot
+import requests
+
 
 load_dotenv()
 
@@ -48,18 +50,20 @@ def send_message(bot, message):
 
 def get_api_answer(timestamp):
     """Делает запрос к единственному эндпоинту API-сервиса."""
+    params = dict(
+        url=ENDPOINT,
+        headers=HEADERS,
+        params={"from_date": timestamp}
+    )
     try:
-        homework_statuses = requests.get(
-            ENDPOINT, headers=HEADERS, params={'from_date': timestamp}
-        )
-        homework_statuses.raise_for_status()
-        return homework_statuses.json()
-    except requests.exceptions.HTTPError as error:
-        logger.error(f'Ошибка доступа к API: {error}')
-        return {}
+        homework_statuses = requests.get(**params)
     except Exception as error:
-        logger.error(f'Неизвестная ошибка при запросе к API: {error}')
-        return {}
+        logger.error(f"Ошибка при запросе к API: {error}")
+    else:
+        if homework_statuses.status_code != HTTPStatus.OK:
+            error_message = "Статус страницы не равен 200"
+            raise requests.HTTPError(error_message)
+        return homework_statuses.json()
 
 
 def check_response(response):
