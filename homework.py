@@ -85,10 +85,13 @@ def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
+        logger.debug(f'Бот отправил сообщение: "{message}"')
         return True
     except Exception as error:
         logger.error(f'Ошибка при отправке сообщения в Telegram: {error}')
         return False
+    finally:
+        logger.debug(f'Бот отправил сообщение: "{message}"')
 
 
 def get_api_answer(timestamp):
@@ -105,7 +108,7 @@ def get_api_answer(timestamp):
                 f'Stатус не равен 200: {homework_statuses.status_code}. '
                 f'{homework_statuses.reason}'
             )
-    except requests.exceptions.ConnectionError as error:
+    except requests.exceptions.RequestException as error:
         raise ConnectionError(error)
     return homework_statuses.json()
 
@@ -142,7 +145,8 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()
+    if not check_tokens():
+        sys.exit('Отсутствуют обязательные переменные окружения')
 
     bot = TeleBot(TELEGRAM_TOKEN)
     timestamp = int(time.time())
