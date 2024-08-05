@@ -62,23 +62,23 @@ class InvalidResponseCodeError(Exception):
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    names_and_tokens = [
-        ('PRACTICUM_TOKEN', 'FIRST_TOKEN'),
-        ('TELEGRAM_TOKEN', 'SECOND_TOKEN'),
-        ('TELEGRAM_CHAT_ID', 'TELEGRAM_CHAT_ID')
-    ]
-    try:
-        for name, token in names_and_tokens:
-            if not os.getenv(token):
-                logger.critical(
-                    f'Отсутствует обязательная переменная окружения {name}.'
-                )
-                return False
-        return True
+    tokens = {
+        'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+        'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID
+    }
+    missing_tokens = []
+    for token_name, token in tokens.items():
+        if not token:
+            missing_tokens.append(token_name)
 
-    except Exception as error:
-        logger.error('Произошла ошибка: %s', error)
-        return False
+    if missing_tokens:
+        logger.critical(
+            f'Отсутствуют переменные окружения: {", ".join(missing_tokens)}'
+        )
+        raise Exception("Необходимо установить переменные окружения.")
+
+    return True
 
 
 def send_message(bot, message):
@@ -146,7 +146,8 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        sys.exit('Отсутствуют обязательные переменные окружения')
+        logger.critical('Отсутствуют переменные окружения')
+        sys.exit('Программа остановлена из-за отсутствия переменных окружения')
 
     bot = TeleBot(TELEGRAM_TOKEN)
     timestamp = int(time.time())
@@ -171,8 +172,8 @@ def main():
             timestamp = response.get('current_date', timestamp)
 
         except Exception as error:
-            current_message = f'Сбой в работе программы: {error}'
-            logger.error(f'Ошибка при выполнении программы: {error}')
+            current_message = f'Сбой в работе : {error}'
+            logger.error(f'Ошибка программы: {error}')
             if current_message != last_message:
                 if send_message(bot, current_message):
                     last_message = current_message
