@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 import requests
 
+from exceptions import InvalidResponseCodeError
+
 
 load_dotenv()
 
@@ -46,20 +48,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class InvalidResponseCodeError(Exception):
-    """Кастомное исключение для неверного кода ответа."""
-
-    def __init__(self, status_code, reason, text):
-        """Конструктор класса InvalidResponseCodeError."""
-        self.status_code = status_code
-        self.reason = reason
-        self.text = text
-        super().__init__(
-            f'Неверный код ответа: {status_code},'
-            'Причина: {reason}, Текст: {text}'
-        )
-
-
 def check_tokens():
     """Проверяет доступность переменных окружения."""
     tokens = {
@@ -76,16 +64,13 @@ def check_tokens():
         logger.critical(
             f'Отсутствуют переменные окружения: {", ".join(missing_tokens)}'
         )
-        raise Exception("Необходимо установить переменные окружения.")
-
-    return True
+        raise ValueError('Необходимо установить переменные окружения.')
 
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logger.debug(f'Бот отправил сообщение: "{message}"')
         return True
     except Exception as error:
         logger.error(f'Ошибка при отправке сообщения в Telegram: {error}')
@@ -103,13 +88,14 @@ def get_api_answer(timestamp):
     )
     try:
         homework_statuses = requests.get(**params)
-        if homework_statuses.status_code != HTTPStatus.OK:
-            raise InvalidResponseCodeError(
-                f'Stатус не равен 200: {homework_statuses.status_code}. '
-                f'{homework_statuses.reason}'
-            )
     except requests.exceptions.RequestException as error:
-        raise ConnectionError(error)
+        raise ConnectionError(f'Ошибка сети: {error}. Параметры: {params}')
+    if homework_statuses.status_code != HTTPStatus.OK:
+        raise InvalidResponseCodeError(
+            f'Stатус не равен 200: {homework_statuses.status_code}. '
+            f'{homework_statuses.reason}'
+            f'{homework_statuses.text}'
+        )
     return homework_statuses.json()
 
 
@@ -145,9 +131,7 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    if not check_tokens():
-        logger.critical('Отсутствуют переменные окружения')
-        sys.exit('Программа остановлена из-за отсутствия переменных окружения')
+    check_tokens()
 
     bot = TeleBot(TELEGRAM_TOKEN)
     timestamp = int(time.time())
@@ -161,22 +145,22 @@ def main():
 
             if not homeworks:
                 logger.debug('Нет новых статусов для отправки.')
-            else:
-                homework = homeworks[0]
-                message = parse_status(homework)
-
-                if message != last_message:
-                    if send_message(bot, message):
-                        last_message = message
-
-            timestamp = response.get('current_date', timestamp)
+                continue
+            homework = homeworks[0]
+            message = parse_status(homework)
+            if message != last_message and send_message(
+                bot, message
+            ):
+                last_message = message
+                timestamp = response.get('current_date', timestamp)
 
         except Exception as error:
             current_message = f'Сбой в работе : {error}'
             logger.error(f'Ошибка программы: {error}')
-            if current_message != last_message:
-                if send_message(bot, current_message):
-                    last_message = current_message
+            if current_message != last_message and send_message(
+                bot, current_message
+            ):
+                last_message = current_message
 
         finally:
             time.sleep(RETRY_PERIOD)
