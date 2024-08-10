@@ -71,12 +71,11 @@ def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        return True
     except Exception as error:
         logger.error(f'Ошибка при отправке сообщения в Telegram: {error}')
         return False
-    finally:
-        logger.debug(f'Бот отправил сообщение: "{message}"')
+    logger.debug(f'Бот отправил сообщение: "{message}"')
+    return True
 
 
 def get_api_answer(timestamp):
@@ -88,8 +87,12 @@ def get_api_answer(timestamp):
     )
     try:
         homework_statuses = requests.get(**params)
-    except requests.exceptions.RequestException as error:
-        raise ConnectionError(f'Ошибка сети: {error}. Параметры: {params}')
+    except requests.exceptions.RequestException:
+        raise ConnectionError(
+            'Ошибка при запросе к API: {url}, {headers}, {params}.'.format(
+                **params
+            )
+        )
     if homework_statuses.status_code != HTTPStatus.OK:
         raise InvalidResponseCodeError(
             f'Stатус не равен 200: {homework_statuses.status_code}. '
