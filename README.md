@@ -66,4 +66,4 @@ python telegram bot
 ![python-telegram-bot version](https://img.shields.io/badge/telegram_bot-13.7-yellowgreen?logo=telegram)
 ![requests version](https://img.shields.io/badge/requests-2.26-yellowgreen)
 ## Автор
-#### [_Анастасия Ресницкая_](https://github.com/kostoyanskaya/)
+#### [_Виктория_](https://github.com/kostoyanskaya/)
