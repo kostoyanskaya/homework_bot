@@ -1,69 +1,52 @@
-# Бот-ассистент
+# Bot Assistant
 python telegram bot
-### Возможности бота:
-- Раз в 10 минут опрашивает API сервиса Практикум.Домашка и проверяет статус отправленной на ревью домашней работы.
-- При обновлении статуса анализирует ответ API и отправляет вам соответствующее уведомление в Telegram.
-- Логгирует свою работу и сообщает вам о важных проблемах сообщением в Telegram.
+### Bot features:
+- Every 10 minutes, it polls the Praktikum.Homework service API and checks the status of the homework sent for review.
+- When the status is updated, it analyzes the API response and sends you a corresponding notification in Telegram.
+- Logs its work and informs you about important issues via a Telegram message.
   
-## Установка
-
-1. Клонировать репозиторий:
-
+## Installation
+1. Clone the repository:
     ```python
     git clone git@github.com:kostoyanskaya/homework_bot.git
     ```
-
-2. Перейти в папку с проектом:
-
+2. Navigate to the project folder:
     ```python
     cd homework_bot/
     ```
-
-3. Установить виртуальное окружение для проекта:
-
+3. Set up a virtual environment for the project:
     ```python
     python -m venv venv
     ```
-
-4. Активировать виртуальное окружение для проекта:
-
+4. Activate the virtual environment for the project:
     ```python
-    # для OS Lunix и MacOS
+    # for Linux and MacOS
     source venv/bin/activate
-
-    # для OS Windows
+    # for Windows
     source venv/Scripts/activate
     ```
-
-5. Установить зависимости:
-
+5. Install dependencies:
     ```python
     python3 -m pip install --upgrade pip
     pip install -r requirements.txt
     ```
-
-7. Зарегистрировать чат-бота в Телеграм
-
-8. Создать в корневой директории файл .env для хранения переменных окружения
-
+7. Register the chat bot in Telegram
+8. Create a .env file in the root directory to store environment variables
     ```python
     PRAKTIKUM_TOKEN = 'xxx'
     TELEGRAM_TOKEN = 'xxx'
     TELEGRAM_CHAT_ID = 'xxx'
     ```
-
-8. Запустить проект локально:
-
+8. Run the project locally:
     ```python
-    # для OS Lunix и MacOS
+    # for Linux and MacOS
     python homework_bot.py
-
-    # для OS Windows
+    # for Windows
     python3 homework_bot.py
     ```
-## Технологии
+## Technologies
 ![python version](https://img.shields.io/badge/Python-3.9-yellowgreen?logo=python)
 ![python-telegram-bot version](https://img.shields.io/badge/telegram_bot-13.7-yellowgreen?logo=telegram)
 ![requests version](https://img.shields.io/badge/requests-2.26-yellowgreen)
-## Автор
-#### [_Виктория_](https://github.com/kostoyanskaya/)
+## Author
+#### [_Victoria_](https://github.com/kostoyanskaya/)
